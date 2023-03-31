@@ -42,11 +42,13 @@ catch(IOException ioe)
       try
       {
         String linea = FlujoLectura.readUTF();
-        if (!linea.equals(""))
-	{
-          linea = nsfd.getInetAddress() +"> "+ linea;
-	  broadcast(linea);
-	}
+        
+          if (linea.contains(":") && !linea.equals("")) {
+              linea =  linea.split(":")[0] +" > "+ linea.split(":")[1];
+              broadcast(linea);
+          }
+        
+        
       }
       
 catch(IOException ioe)
