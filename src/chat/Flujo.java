@@ -12,77 +12,58 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 
-public class Flujo extends Thread
-{
-  Socket nsfd;
-  DataInputStream FlujoLectura;
-  DataOutputStream FlujoEscritura;
+public class Flujo extends Thread {
 
-  public Flujo (Socket sfd)
-  {
-    nsfd = sfd;
-    try
-    {
-      FlujoLectura = new DataInputStream(new BufferedInputStream(sfd.getInputStream()));
-      FlujoEscritura = new DataOutputStream(new BufferedOutputStream(sfd.getOutputStream()));
-    }
-    
-catch(IOException ioe)
-    {
-      System.out.println("IOException(Flujo): "+ioe);
-    }
-  }
+    Socket socket;
+    DataInputStream FlujoLectura;
+    DataOutputStream FlujoEscritura;
 
-  public void run()
-  {
-    broadcast(nsfd.getInetAddress()+"> se ha conectado");
-    Servidor.usuarios.add ((Object) this);
-    while(true)
-    {
-      try
-      {
-        String linea = FlujoLectura.readUTF();
-        
-          if (linea.contains(":") && !linea.equals("")) {
-              linea =  linea.split(":")[0] +" > "+ linea.split(":")[1];
-              broadcast(linea);
-          }
-        
-        
-      }
-      
-catch(IOException ioe)
-      {
-	Servidor.usuarios.removeElement(this);
-	broadcast(nsfd.getInetAddress()+"> se ha desconectado");
-	break;
-      }
-    }
-  }
-  
-  public void broadcast(String mensaje)
-  {
-    synchronized (Servidor.usuarios)
-    {
-      Enumeration e = Servidor.usuarios.elements();
-      while (e.hasMoreElements())
-      {
-	Flujo f = (Flujo) e.nextElement();
-
-try
-	{
-          synchronized(f.FlujoEscritura)
-	  {
-            f.FlujoEscritura.writeUTF(mensaje);
-	    f.FlujoEscritura.flush();
-	  }
+    public Flujo(Socket socketEntrada) {
+        socket = socketEntrada;
+        try {
+            FlujoLectura = new DataInputStream(new BufferedInputStream(socketEntrada.getInputStream()));
+            FlujoEscritura = new DataOutputStream(new BufferedOutputStream(socketEntrada.getOutputStream()));
+        } catch (IOException ioe) {
+            System.out.println("IOException(Flujo): " + ioe);
         }
-	catch(IOException ioe)
-	{
-	  System.out.println("Error: "+ioe);
-	}
-      }
     }
-  }
-}
 
+    public void run() {
+        broadcast(socket.getInetAddress() + "> se ha conectado");
+        Servidor.usuarios.add((Object) this);
+        while (true) {
+            try {
+                String linea = FlujoLectura.readUTF();
+
+              
+                    broadcast(linea);
+                
+                
+                
+
+            } catch (IOException ioe) {
+                Servidor.usuarios.removeElement(this);
+                broadcast(socket.getInetAddress() + "> se ha desconectado");
+                break;
+            }
+        }
+    }
+
+    public void broadcast(String mensaje) {
+        synchronized (Servidor.usuarios) {
+            Enumeration e = Servidor.usuarios.elements();
+            while (e.hasMoreElements()) {
+                Flujo f = (Flujo) e.nextElement();
+
+                try {
+                    synchronized (f.FlujoEscritura) {
+                        f.FlujoEscritura.writeUTF(mensaje);
+                        f.FlujoEscritura.flush();
+                    }
+                } catch (IOException ioe) {
+                    System.out.println("Error: " + ioe);
+                }
+            }
+        }
+    }
+}

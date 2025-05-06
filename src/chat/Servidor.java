@@ -8,45 +8,41 @@ package chat;
  *
  * @author pablonoguera
  */
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Servidor extends Thread
-{
-    
-  public static Vector usuarios = new Vector();
-  
-  
-  public static void main (String args[])
-  {
-    ServerSocket sfd = null;
-    try
-    {   
-      sfd = new ServerSocket(8000);
-      
-        System.out.println("ip: "+ sfd.getLocalPort());
-    }
-    catch (IOException ioe)
-    {
-      System.out.println("Comunicación rechazada."+ioe);
-      System.exit(1);
-    }
+public class Servidor extends Thread {
 
-    while (true)
-    {
-      try
-      {
-        Socket nsfd = sfd.accept();
-        System.out.println("Conexion aceptada de: "+nsfd.getInetAddress());
-	Flujo flujo = new Flujo(nsfd);
-	Thread t = new Thread(flujo);
-        t.start();
-      }
-      catch(IOException ioe)
-      {
-        System.out.println("Error: "+ioe);
-      }
+    public static Vector usuarios = new Vector();
+    
+
+
+    public static void main(String args[]) {
+        ServerSocket server = null;
+        try {
+            server = new ServerSocket(8000);
+
+            System.out.println("Servidor Activo....");
+        } catch (IOException ioe) {
+            System.out.println("Comunicación rechazada." + ioe);
+            System.exit(1);
+        }
+        System.out.println("Esperando .....");
+
+        while (true) {
+            try {
+                Socket socket = server.accept();
+                DataInputStream FlujoLectura = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                String nombre = FlujoLectura.readUTF();
+                System.out.println("Conexión aceptada de: " + nombre);
+                Flujo flujo = new Flujo(socket);
+                Thread t = new Thread(flujo);
+                t.start();
+            } catch (IOException ioe) {
+                System.out.println("Error: " + ioe);
+            }
+        }
     }
-  }
 }

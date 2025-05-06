@@ -15,14 +15,17 @@ import java.awt.event.*;
 
 public class Cliente extends Frame implements ActionListener {
 
-    static Socket sfd = null;
+    static Socket socket = null;
     static DataInputStream EntradaSocket;
     static DataOutputStream SalidaSocket;
     static TextField salida;
     static TextArea entrada;
     static String texto;
+   static  String name;
+    
 
     public Cliente() {
+        name= "No hay usuario";
         setTitle("Chat");
         setSize(350, 200);
         salida = new TextField(30);
@@ -36,18 +39,19 @@ public class Cliente extends Frame implements ActionListener {
         setVisible(true);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args)throws IOException{
         Cliente cliente = new Cliente();
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         try {
-            sfd = new Socket("localhost", 8000); // 172.20.10.5 : 8000
-            EntradaSocket = new DataInputStream(new BufferedInputStream(sfd.getInputStream()));
-            SalidaSocket = new DataOutputStream(new BufferedOutputStream(sfd.getOutputStream()));
-            try {
-                SalidaSocket.writeUTF("Pablo");
+            socket = new Socket("localhost", 8000); // 172.20.10.5 : 8000
+            EntradaSocket = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            SalidaSocket = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            System.out.println("Ingrese su nombre: ");
+                 name = br.readLine();
+                 System.out.println("----");
+                SalidaSocket.writeUTF(name);
                 SalidaSocket.flush();
-            } catch (IOException ioe) {
-                System.out.println("Error: " + ioe);
-            }
+          
         } catch (UnknownHostException uhe) {
             System.out.println("No se puede acceder al servidor.");
             System.exit(1);
@@ -70,7 +74,7 @@ public class Cliente extends Frame implements ActionListener {
         texto = salida.getText();
         salida.setText("");
         try {
-            SalidaSocket.writeUTF("Pablo: "+texto);
+            SalidaSocket.writeUTF(name+": " + texto);
             SalidaSocket.flush();
         } catch (IOException ioe) {
             System.out.println("Error: " + ioe);
@@ -79,9 +83,9 @@ public class Cliente extends Frame implements ActionListener {
 
     public boolean handleEvent(Event e) {
         if ((e.target == this) && (e.id == Event.WINDOW_DESTROY)) {
-            if (sfd != null) {
+            if (socket != null) {
                 try {
-                    sfd.close();
+                    socket.close();
                 } catch (IOException ioe) {
                     System.out.println("Error: " + ioe);
                 }
