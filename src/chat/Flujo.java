@@ -1,13 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package chat;
 
-/**
- *
- * @author pablonoguera
- */
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -17,6 +9,7 @@ public class Flujo extends Thread {
     Socket socket;
     DataInputStream FlujoLectura;
     DataOutputStream FlujoEscritura;
+    String nombre;
 
     public Flujo(Socket socketEntrada) {
         socket = socketEntrada;
@@ -29,41 +22,83 @@ public class Flujo extends Thread {
     }
 
     public void run() {
-        broadcast(socket.getInetAddress() + "> se ha conectado");
-        Servidor.usuarios.add((Object) this);
-        while (true) {
-            try {
+        try {
+            
+            nombre = FlujoLectura.readUTF();
+            Servidor.usuarios.add(this);
+            enviarListaUsuarios(); 
+
+            while (true) {
                 String linea = FlujoLectura.readUTF();
+                System.out.println("linea = " + linea);
 
-              
+                if (linea.startsWith("message:")) {
                     broadcast(linea);
-                
-                
-                
-
-            } catch (IOException ioe) {
-                Servidor.usuarios.removeElement(this);
-                broadcast(socket.getInetAddress() + "> se ha desconectado");
-                break;
+                } else if (linea.startsWith("private:")) {
+                    enviarMensajePrivado(linea); 
+                }
             }
+
+        } catch (IOException ioe) {
+            Servidor.usuarios.removeElement(this);
+            broadcast("message:" + nombre + " se ha desconectado.");
+            enviarListaUsuarios(); 
         }
     }
 
     public void broadcast(String mensaje) {
         synchronized (Servidor.usuarios) {
-            Enumeration e = Servidor.usuarios.elements();
-            while (e.hasMoreElements()) {
-                Flujo f = (Flujo) e.nextElement();
-
+            for (Object o : Servidor.usuarios) {
+                Flujo f = (Flujo) o;
                 try {
                     synchronized (f.FlujoEscritura) {
                         f.FlujoEscritura.writeUTF(mensaje);
                         f.FlujoEscritura.flush();
                     }
                 } catch (IOException ioe) {
-                    System.out.println("Error: " + ioe);
+                    System.out.println("Error al enviar mensaje: " + ioe);
                 }
             }
+        }
+    }
+
+    public void enviarListaUsuarios() {
+        StringBuilder lista = new StringBuilder("[USERS],");
+        synchronized (Servidor.usuarios) {
+            for (Object o : Servidor.usuarios) {
+                Flujo f = (Flujo) o;
+                lista.append(f.nombre).append(",");
+            }
+        }
+
+        
+        if (lista.length() > 7) {
+            lista.setLength(lista.length() - 1);
+        }
+
+        broadcast(lista.toString());
+    }
+
+    public void enviarMensajePrivado(String linea) {
+        
+        try {
+            String[] partes = linea.split(":", 3);
+            if (partes.length < 3) return;
+
+            String destinatario = partes[1].trim();
+            String mensaje = partes[2].trim();
+
+            for (Object o : Servidor.usuarios) {
+                Flujo f = (Flujo) o;
+                if (f.nombre.equals(destinatario)) {
+                    f.FlujoEscritura.writeUTF("private:" + nombre + ": " + mensaje);
+                    f.FlujoEscritura.flush();
+                    break;
+                }
+            }
+
+        } catch (IOException ioe) {
+            System.out.println("Error al enviar mensaje privado: " + ioe);
         }
     }
 }

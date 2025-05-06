@@ -1,17 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package chat;
 
-/**
- *
- * @author pablonoguera
- */
 import java.io.*;
 import java.net.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.swing.*;
 
 public class Cliente extends Frame implements ActionListener {
 
@@ -20,67 +13,118 @@ public class Cliente extends Frame implements ActionListener {
     static DataOutputStream SalidaSocket;
     static TextField salida;
     static TextArea entrada;
-    static String texto;
-   static  String name;
-    
 
-    public Cliente() {
-        name= "No hay usuario";
-        setTitle("Chat");
-        setSize(350, 200);
+    static JList<String> jList;
+    static DefaultListModel<String> listModel;
+    static String texto;
+    static String name;
+
+    public Cliente(String nombreUsuario) {
+        name = nombreUsuario;
+        setTitle("Chat - " + name);
+        setSize(500, 300);
+        setLayout(new BorderLayout());
+
         salida = new TextField(30);
         salida.addActionListener(this);
 
         entrada = new TextArea();
         entrada.setEditable(false);
 
-        add("South", salida);
-        add("Center", entrada);
+        listModel = new DefaultListModel<>();
+        jList = new JList<>(listModel);
+        jList.setPreferredSize(new Dimension(120, 0));
+
+    
+        jList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = jList.locationToIndex(e.getPoint());
+                if (index >= 0) {
+                    String selected = jList.getSelectedValue();
+                    if (selected != null && selected.equals(name)) {
+                        jList.clearSelection(); 
+                    } else if (e.getClickCount() == 2) {
+                        jList.clearSelection(); 
+                        entrada.append("[Ahora estás escribiendo en el chat público]\n");
+                    }
+                }
+            }
+        });
+
+        add(jList, BorderLayout.WEST);
+        add(salida, BorderLayout.SOUTH);
+        add(entrada, BorderLayout.CENTER);
+
         setVisible(true);
     }
 
-    public static void main(String[] args)throws IOException{
-        Cliente cliente = new Cliente();
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+    public static void main(String[] args) {
         try {
-            socket = new Socket("localhost", 8000); // 172.20.10.5 : 8000
-            EntradaSocket = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-            SalidaSocket = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
-            System.out.println("Ingrese su nombre: ");
-                 name = br.readLine();
-                 System.out.println("----");
-                SalidaSocket.writeUTF(name);
-                SalidaSocket.flush();
-          
-        } catch (UnknownHostException uhe) {
-            System.out.println("No se puede acceder al servidor.");
-            System.exit(1);
-        } catch (IOException ioe) {
-            System.out.println("Comunicación rechazada.");
-            System.exit(1);
-        }
-        while (true) {
-            try {
-                String linea = EntradaSocket.readUTF();
-                entrada.append(linea + "\n");
-            } catch (IOException ioe) {
-                System.exit(1);
+            String nombre = JOptionPane.showInputDialog(null, "Ingrese su nombre:", "Nombre de usuario", JOptionPane.PLAIN_MESSAGE);
+
+            if (nombre == null || nombre.trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Debe ingresar un nombre para conectarse.");
+                System.exit(0);
             }
 
+            Cliente cliente = new Cliente(nombre);
+            socket = new Socket("localhost", 8000);
+            EntradaSocket = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            SalidaSocket = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+
+            SalidaSocket.writeUTF(nombre);
+            SalidaSocket.flush();
+
+            while (true) {
+                String linea = EntradaSocket.readUTF();
+
+                if (linea.startsWith("private:")) {
+                    cliente.entrada.append("[Privado] " + linea.substring(8) + "\n");
+                    continue;
+                }
+
+                if (linea.startsWith("message:")) {
+                    cliente.entrada.append(linea.substring(8) + "\n");
+                    continue;
+                }
+
+                if (linea.startsWith("[USERS]")) {
+                    String[] users = linea.substring(8).split(",");
+                    listModel.clear();
+                    for (String user : users) {
+                        listModel.addElement(user.trim());
+                    }
+                    continue;
+                }
+            }
+
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "No se pudo conectar al servidor.\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
         }
     }
 
+    @Override
     public void actionPerformed(ActionEvent e) {
         texto = salida.getText();
         salida.setText("");
         try {
-            SalidaSocket.writeUTF(name+": " + texto);
+            String selectedUser = jList.getSelectedValue();
+
+            if (selectedUser != null && !selectedUser.equals(name)) {
+                SalidaSocket.writeUTF("private:" + selectedUser + ":" + texto);
+                entrada.append("[Privado a " + selectedUser + "] " + texto + "\n");
+            } else {
+                SalidaSocket.writeUTF("message:" + name + ": " + texto);
+            }
             SalidaSocket.flush();
         } catch (IOException ioe) {
-            System.out.println("Error: " + ioe);
+            entrada.append("Error al enviar mensaje.\n");
         }
     }
 
+    @Override
     public boolean handleEvent(Event e) {
         if ((e.target == this) && (e.id == Event.WINDOW_DESTROY)) {
             if (socket != null) {
