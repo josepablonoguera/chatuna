@@ -24,7 +24,7 @@ public class Cliente extends Frame implements ActionListener {
         setTitle("Chat - " + name);
         setSize(500, 300);
         setLayout(new BorderLayout());
-
+        
         salida = new TextField(30);
         salida.addActionListener(this);
 
@@ -69,7 +69,7 @@ public class Cliente extends Frame implements ActionListener {
             }
 
             Cliente cliente = new Cliente(nombre);
-            socket = new Socket("localhost", 8000);
+            socket = new Socket("10.32.237.40", 8000);
             EntradaSocket = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             SalidaSocket = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
 

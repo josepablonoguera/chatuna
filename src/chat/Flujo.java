@@ -9,7 +9,7 @@ public class Flujo extends Thread {
     Socket socket;
     DataInputStream FlujoLectura;
     DataOutputStream FlujoEscritura;
-    String nombre;
+    private String nombre;
 
     public Flujo(Socket socketEntrada) {
         socket = socketEntrada;
@@ -19,6 +19,13 @@ public class Flujo extends Thread {
         } catch (IOException ioe) {
             System.out.println("IOException(Flujo): " + ioe);
         }
+    }
+
+    /**
+     * @return the nombre
+     */
+    public String getNombre() {
+        return nombre;
     }
 
     public void run() {
@@ -41,12 +48,17 @@ public class Flujo extends Thread {
 
         } catch (IOException ioe) {
             Servidor.usuarios.removeElement(this);
-            broadcast("message:" + nombre + " se ha desconectado.");
+            broadcast("message:" + getNombre() + " se ha desconectado.");
             enviarListaUsuarios(); 
         }
     }
 
     public void broadcast(String mensaje) {
+        
+        
+        mensaje = mensaje.replace("liga", "********");
+        
+        
         synchronized (Servidor.usuarios) {
             for (Object o : Servidor.usuarios) {
                 Flujo f = (Flujo) o;
@@ -67,7 +79,7 @@ public class Flujo extends Thread {
         synchronized (Servidor.usuarios) {
             for (Object o : Servidor.usuarios) {
                 Flujo f = (Flujo) o;
-                lista.append(f.nombre).append(",");
+                lista.append(f.getNombre()).append(",");
             }
         }
 
@@ -90,8 +102,8 @@ public class Flujo extends Thread {
 
             for (Object o : Servidor.usuarios) {
                 Flujo f = (Flujo) o;
-                if (f.nombre.equals(destinatario)) {
-                    f.FlujoEscritura.writeUTF("private:" + nombre + ": " + mensaje);
+                if (f.getNombre().equals(destinatario)) {
+                    f.FlujoEscritura.writeUTF("private:" + getNombre() + ": " + mensaje);
                     f.FlujoEscritura.flush();
                     break;
                 }
